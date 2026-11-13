@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#059669" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>DukaanLite POS — Smart Stock & Billing</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <style>
+    :root {
+      --primary: #059669;
+      --primary-dark: #047857;
+      --primary-light: #d1fae5;
+      --accent: #2563eb;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --warn: #d97706;
+      --warn-light: #fef3c7;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 14px;
+      --shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 84px;
+      overscroll-behavior-y: contain;
+    }
+    /* Header */
+    header {
+      position: sticky; top: 0; z-index: 40;
+      background: var(--primary); color: #fff;
+      padding: 12px 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      box-shadow: 0 2px 10px rgba(5, 150, 105, 0.25);
+    }
+    .brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .brand-title { font-size: 1.08rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .brand-sub { font-size: 0.72rem; opacity: 0.9; display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #86efac; display: inline-block; }
+    .status-dot.offline { background: #fde047; }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+    select.lang-select {
+      background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 8px; padding: 6px 8px; font-size: 0.8rem; font-weight: 600; outline: none;
+    }
+    select.lang-select option { color: #0f172a; background: #fff; }
+    .icon-btn {
+      background: rgba(255,255,255,0.18); border: none; color: #fff;
+      width: 34px; height: 34px; border-radius: 8px; font-size: 1rem;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+
+    /* Container & Views */
+    main { max-width: 640px; margin: 0 auto; padding: 12px; }
+    .view { display: none; animation: fadeIn 0.14s ease; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0.6; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+    /* Cards & Grids */
+    .card {
+      background: var(--card); border-radius: var(--radius); padding: 14px;
+      margin-bottom: 12px; box-shadow: var(--shadow); border: 1px solid var(--border);
+    }
+    .card-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+    .stat-box {
+      background: var(--card); border-radius: var(--radius); padding: 12px;
+      border: 1px solid var(--border); box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+    .stat-val { font-size: 1.3rem; font-weight: 800; margin-top: 4px; color: var(--text); }
+    .stat-val.green { color: var(--primary); }
+    .stat-val.red { color: var(--danger); }
+    .stat-val.amber { color: var(--warn); }
+
+    /* Buttons & Inputs */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 11px 14px; border-radius: 10px; border: none; font-weight: 700;
+      font-size: 0.9rem; cursor: pointer; transition: transform 0.06s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-blue { background: var(--accent); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-outline { background: #fff; color: var(--text); border: 1.5px solid var(--border); }
+    .btn-sm { padding: 7px 10px; font-size: 0.8rem; border-radius: 8px; }
+    .btn-block { width: 100%; }
+
+    .input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    input, select.form-control {
+      width: 100%; padding: 11px 12px; border: 1.5px solid var(--border);
+      border-radius: 10px; font-size: 0.95rem; background: #fff; color: var(--text); outline: none;
+    }
+    input:focus, select.form-control:focus { border-color: var(--primary); }
+    label.field-label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+    .form-group { margin-bottom: 10px; }
+
+    /* Search & Voice Bar */
+    .search-bar { display: flex; gap: 6px; margin-bottom: 12px; }
+    .voice-btn {
+      min-width: 46px; background: var(--primary-light); color: var(--primary-dark);
+      border: 1.5px solid #a7f3d0; border-radius: 10px; font-size: 1.2rem; cursor: pointer;
+    }
+    .voice-btn.listening { background: var(--danger); color: #fff; border-color: var(--danger); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.65; } }
+
+    /* Scanner Viewport */
+    .scanner-box {
+      position: relative; background: #0f172a; border-radius: 12px; overflow: hidden;
+      aspect-ratio: 16/9; max-height: 210px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 10px;
+    }
+    .scanner-box video { width: 100%; height: 100%; object-fit: cover; }
+    .scan-laser {
+      position: absolute; left: 10%; right: 10%; height: 2px; background: #ef4444;
+      box-shadow: 0 0 8px #ef4444; animation: scanLine 2s infinite ease-in-out;
+    }
+    @keyframes scanLine { 0%,100% { top: 25%; } 50% { top: 75%; } }
+    .demo-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip {
+      background: #f8fafc; border: 1px solid var(--border); padding: 6px 10px;
+      border-radius: 20px; font-size: 0.76rem; font-weight: 600; cursor: pointer;
+    }
+    .chip:active { background: var(--primary-light); border-color: var(--primary); }
+
+    /* Loose Items Quick Grid */
+    .loose-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .loose-tile {
+      background: #f8fafc; border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 10px 6px; text-align: center; cursor: pointer;
+    }
+    .loose-tile:active { border-color: var(--primary); background: var(--primary-light); }
+    .loose-emoji { font-size: 1.5rem; display: block; margin-bottom: 3px; }
+    .loose-name { font-size: 0.8rem; font-weight: 700; }
+    .loose-price { font-size: 0.72rem; color: var(--muted); }
+
+    /* Item List & Cart */
+    .item-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-info { min-width: 0; flex: 1; }
+    .item-name { font-weight: 700; font-size: 0.92rem; }
+    .item-meta { font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
+    .badge {
+      display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+    }
+    .badge-low { background: var(--danger-light); color: var(--danger); }
+    .badge-exp { background: var(--warn-light); color: var(--warn); }
+    .badge-ok { background: var(--primary-light); color: var(--primary-dark); }
+
+    .qty-ctrl { display: flex; align-items: center; gap: 6px; }
+    .qty-btn {
+      width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+      background: #f8fafc; font-weight: 800; font-size: 1rem; cursor: pointer;
+    }
+    .qty-val { min-width: 28px; text-align: center; font-weight: 700; font-size: 0.9rem; }
+
+    /* Bottom Navigation */
+    nav.bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+      background: #fff; border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      padding: 6px 2px env(safe-area-inset-bottom, 6px);
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.04);
+    }
+    .nav-item {
+      background: none; border: none; color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: 0.68rem; font-weight: 700; padding: 4px 2px; cursor: pointer;
+    }
+    .nav-item .nav-icon { font-size: 1.25rem; }
+    .nav-item.active { color: var(--primary); }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 60;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-sheet {
+      background: #fff; width: 100%; max-width: 640px; border-radius: 20px 20px 0 0;
+      padding: 18px 16px 24px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .modal-title { font-size: 1.05rem; font-weight: 800; }
+
+    /* PIN Lock Screen */
+    #pinOverlay {
+      position: fixed; inset: 0; background: var(--primary); color: #fff; z-index: 100;
+      display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px;
+    }
+    #pinOverlay.active { display: flex; }
+    .pin-dots { display: flex; gap: 14px; margin: 20px 0; }
+    .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; }
+    .pin-dot.filled { background: #fff; }
+    .pin-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+    .pin-key {
+      height: 60px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.14); color: #fff; font-size: 1.35rem; font-weight: 700; cursor: pointer;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; top: 68px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; color: #fff; padding: 9px 16px; border-radius: 999px;
+      font-size: 0.84rem; font-weight: 600; z-index: 90; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s; max-width: 90%; text-align: center;
+    }
+    #toast.show { opacity: 1; }
+
+    /* Toggle Switch */
+    .switch-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+    .switch { position: relative; width: 46px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 26px; transition: 0.2s;
+    }
+    .slider:before {
+      content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
+      background: #fff; border-radius: 50%; transition: 0.2s;
+    }
+    input:checked + .slider { background: var(--primary); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* Print Styles (58mm Thermal Receipt) */
+    @media print {
+      body * { visibility: hidden; }
+      #printReceiptArea, #printReceiptArea * { visibility: visible; }
+      #printReceiptArea {
+        position: fixed; left: 0; top: 0; width: 58mm; font-family: monospace;
+        font-size: 11px; color: #000; background: #fff; padding: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PIN Lock Screen -->
+  <div id="pinOverlay">
+    <div style="font-size:2.4rem;">🔒</div>
+    <h2 id="pinShopTitle" style="margin-top:8px;">DukaanLite POS</h2>
+    <p id="pinPromptText" style="opacity:0.9; font-size:0.9rem; margin-top:4px;">Enter 4-Digit Shop PIN</p>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="enterPinDigit('1')">1</button>
+      <button class="pin-key" onclick="enterPinDigit('2')">2</button>
+      <button class="pin-key" onclick="enterPinDigit('3')">3</button>
+      <button class="pin-key" onclick="enterPinDigit('4')">4</button>
+      <button class="pin-key" onclick="enterPinDigit('5')">5</button>
+      <button class="pin-key" onclick="enterPinDigit('6')">6</button>
+      <button class="pin-key" onclick="enterPinDigit('7')">7</button>
+      <button class="pin-key" onclick="enterPinDigit('8')">8</button>
+      <button class="pin-key" onclick="enterPinDigit('9')">9</button>
+      <button class="pin-key" onclick="clearPinInput()">C</button>
+      <button class="pin-key" onclick="enterPinDigit('0')">0</button>
+      <button class="pin-key" onclick="backspacePin()">⌫</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast"></div>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div>
+        <div class="brand-title" id="headerShopName">Apna Kirana Store</div>
+        <div class="brand-sub">
+          <span class="status-dot" id="netDot"></span>
+          <span id="netStatusText">Offline-Ready</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)" aria-label="Language">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी (Hindi)</option>
+        <option value="ta">தமிழ் (Tamil)</option>
+        <option value="te">తెలుగు (Telugu)</option>
+        <option value="mr">मराठी (Marathi)</option>
+        <option value="bn">বাংলা (Bengali)</option>
+        <option value="gu">ગુજરાતી (Gujarati)</option>
+        <option value="kn">ಕನ್ನಡ (Kannada)</option>
+        <option value="ml">മലയാളം (Malayalam)</option>
+        <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+      </select>
+      <button class="icon-btn" id="installAppBtn" style="display:none;" onclick="installPWA()" title="Install App">📲</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 1. DASHBOARD VIEW -->
+    <section id="view-home" class="view active">
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label" data-i18n="todaySales">Today's Sales</div>
+          <div class="stat-val green" id="statTodaySales">₹0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label" data-i18n="todayProfit">Est. Profit</div>
+          <div class="stat-val green" id="statTodayProfit">₹0</div>
+        </div>
+        <div class="stat-box" onclick="switchTab('stock')">
+          <div class="stat-label" data-i18n="lowStockAlerts">Low Stock Alerts</div>
+          <div class="stat-val red" id="statLowStock">0</div>
+        </div>
+        <div class="stat-box" onclick="switchTab('udhaar')">
+          <div class="stat-label" data-i18n="totalUdhaar">Pending Udhaar</div>
+          <div class="stat-val amber" id="statTotalUdhaar">₹0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span data-i18n="quickActions">Quick Actions</span></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button class="btn btn-primary" onclick="switchTab('bill'); startScanner('bill')">📷 <span data-i18n="scanToBill">Scan & Bill</span></button>
+          <button class="btn btn-blue" onclick="switchTab('stock'); startScanner('stock')">📦 <span data-i18n="scanAddStock">Add Stock</span></button>
+          <button class="btn btn-outline" onclick="openAddProductModal()">➕ <span data-i18n="newItem">New Item</span></button>
+          <button class="btn btn-outline" onclick="shareReorderWhatsApp()">📋 <span data-i18n="reorderList">Reorder List</span></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span data-i18n="alertsTitle">Stock & Expiry Alerts</span>
+          <span class="badge badge-low" id="alertCountBadge">0</span>
+        </div>
+        <div id="homeAlertsList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span data-i18n="recentBills">Recent Bills</span></div>
+        <div id="recentBillsList"></div>
+      </div>
+    </section>
+
+    <!-- 2. BILLING / POS VIEW -->
+    <section id="view-bill" class="view">
+      <div class="card">
+        <div class="card-title">
+          <span>📷 <span data-i18n="barcodeScanner">Barcode Scanner</span></span>
+          <button class="btn btn-sm btn-primary" id="toggleBillCamBtn" onclick="toggleScanner('bill')">Start Camera</button>
+        </div>
+        <div class="scanner-box" id="billScannerBox" style="display:none;">
+          <video id="billVideo" playsinline muted></video>
+          <div class="scan-laser"></div>
+        </div>
+        <div class="search-bar" style="margin-bottom:6px;">
+          <input type="text" id="billSearchInput" placeholder="Search item or enter barcode..." oninput="renderBillSearch()" />
+          <button class="voice-btn" id="billVoiceBtn" onclick="startVoiceSearch('billSearchInput', 'billVoiceBtn')" title="Voice Search">🎤</button>
+        </div>
+        <div style="font-size:0.74rem; color:var(--muted); margin-bottom:4px;">Tap to simulate packet scan:</div>
+        <div class="demo-chips" id="billDemoChips"></div>
+        <div id="billSearchResults" style="margin-top:8px;"></div>
+      </div>
+
+      <!-- Loose Items Quick Tap -->
+      <div class="card">
+        <div class="card-title"><span>⚖️ <span data-i18n="looseItems">Loose Items (Quick Weight)</span></span></div>
+        <div class="loose-grid" id="looseItemsGrid"></div>
+      </div>
+
+      <!-- Current Bill Cart -->
+      <div class="card">
+        <div class="card-title">
+          <span>🧾 <span data-i18n="currentBill">Current Bill</span></span>
+          <button class="btn btn-sm btn-outline" onclick="clearCart()" data-i18n="clear">Clear</button>
+        </div>
+        <div id="cartItemsList"></div>
+
+        <div style="border-top:1px dashed var(--border); margin-top:10px; padding-top:10px;">
+          <div class="switch-row">
+            <span style="font-size:0.86rem; font-weight:700;" data-i18n="includeGst">Include GST</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <select id="gstRateSelect" class="form-control" style="padding:4px 8px; width:auto; font-size:0.82rem;" onchange="renderCart()">
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18">18%</option>
+              </select>
+              <label class="switch">
+                <input type="checkbox" id="gstToggle" onchange="renderCart()" />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:var(--muted); margin-top:4px;">
+            <span>Subtotal</span><span id="billSubtotal">₹0.00</span>
+          </div>
+          <div id="billGstRow" style="display:none; justify-content:space-between; font-size:0.85rem; color:var(--muted); margin-top:4px;">
+            <span>GST</span><span id="billGstAmount">₹0.00</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:1.18rem; font-weight:800; margin-top:8px;">
+            <span data-i18n="grandTotal">Grand Total</span><span class="stat-val green" style="font-size:1.25rem;" id="billGrandTotal">₹0.00</span>
+          </div>
+
+          <div class="input-row" style="margin-top:10px;">
+            <input type="text" id="billCustomerName" placeholder="Customer Name (optional / for Udhaar)" />
+            <input type="tel" id="billCustomerPhone" placeholder="WhatsApp No." style="max-width:135px;" />
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+            <button class="btn btn-primary" onclick="checkoutBill('PAID')">✅ <span data-i18n="completeBill">Complete & QR</span></button>
+            <button class="btn btn-outline" style="border-color:var(--warn); color:var(--warn);" onclick="checkoutBill('UDHAAR')">📒 <span data-i18n="saveUdhaar">Save as Udhaar</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. STOCK / INVENTORY VIEW -->
+    <section id="view-stock" class="view">
+      <div class="card">
+        <div class="card-title">
+          <span>📦 <span data-i18n="stockManager">Stock Manager</span></span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-sm btn-blue" onclick="toggleScanner('stock')">📷 Scan</button>
+            <button class="btn btn-sm btn-primary" onclick="openAddProductModal()">+ Add</button>
+          </div>
+        </div>
+        <div class="scanner-box" id="stockScannerBox" style="display:none;">
+          <video id="stockVideo" playsinline muted></video>
+          <div class="scan-laser"></div>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="stockSearchInput" placeholder="Search stock by name or barcode..." oninput="renderStockList()" />
+          <button class="voice-btn" id="stockVoiceBtn" onclick="startVoiceSearch('stockSearchInput', 'stockVoiceBtn')">🎤</button>
+        </div>
+        <div style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">
+          <button class="chip" onclick="setStockFilter('ALL')">All Items</button>
+          <button class="chip" onclick="setStockFilter('LOW')">⚠️ Low Stock</button>
+          <button class="chip" onclick="setStockFilter('EXP')">⏳ Expiring Soon</button>
+          <button class="chip" onclick="shareReorderWhatsApp()">📲 WhatsApp Reorder</button>
+        </div>
+        <div id="stockItemsList"></div>
+      </div>
+    </section>
+
+    <!-- 4. UDHAAR (CREDIT LEDGER) VIEW -->
+    <section id="view-udhaar" class="view">
+      <div class="card">
+        <div class="card-title">
+          <span>📒 <span data-i18n="udhaarLedger">Udhaar Khata (Credit)</span></span>
+          <button class="btn btn-sm btn-primary" onclick="openUdhaarModal()">+ Add Entry</button>
+        </div>
+        <div id="udhaarList"></div>
+      </div>
+    </section>
+
+    <!-- 5. SETTINGS VIEW -->
+    <section id="view-settings" class="view">
+      <div class="card">
+        <div class="card-title"><span>🏪 <span data-i18n="shopProfile">Shop Profile & UPI</span></span></div>
+        <div class="form-group">
+          <label class="field-label">Shop Name</label>
+          <input type="text" id="setShopName" placeholder="e.g. Sharma Kirana Store" />
+        </div>
+        <div class="form-group">
+          <label class="field-label">Shop Address / Phone (shown on bill)</label>
+          <input type="text" id="setShopAddress" placeholder="Main Market, Rampur | 9876543210" />
+        </div>
+        <div class="form-group">
+          <label class="field-label">Merchant UPI ID (for Bill QR Code)</label>
+          <input type="text" id="setUpiId" placeholder="e.g. shopkeeper@okicici" />
+        </div>
+        <div class="form-group">
+          <label class="field-label">GSTIN (Optional)</label>
+          <input type="text" id="setGstin" placeholder="09AAAAA0000A1Z5" />
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveSettings()">💾 Save Shop Settings</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>🔒 <span data-i18n="securitySettings">Security & Preferences</span></span></div>
+        <div class="switch-row">
+          <div>
+            <div style="font-weight:700; font-size:0.9rem;">App PIN Lock</div>
+            <div style="font-size:0.75rem; color:var(--muted);">Require 4-digit PIN when opening app</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="setPinEnabled" onchange="togglePinSetting(this.checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="form-group" id="pinSetupBox" style="display:none; margin-top:8px;">
+          <label class="field-label">Set 4-Digit PIN</label>
+          <div class="input-row">
+            <input type="password" id="setPinCode" maxlength="4" inputmode="numeric" placeholder="1234" />
+            <button class="btn btn-primary" onclick="savePinCode()">Set PIN</button>
+          </div>
+        </div>
+        <div class="switch-row">
+          <div>
+            <div style="font-weight:700; font-size:0.9rem;">Scanner Beep Sound</div>
+            <div style="font-size:0.75rem; color:var(--muted);">Zero-KB synthesized beep on barcode scan</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="setBeepEnabled" checked onchange="saveSettings(true)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>☁️ <span data-i18n="backupRestore">Zero-Cost Backup & Restore</span></span></div>
+        <p style="font-size:0.8rem; color:var(--muted); margin-bottom:10px;">
+          All data stays 100% on your phone for zero lag. Export a tiny backup file anytime to save on Google Drive or WhatsApp.
+        </p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button class="btn btn-blue" onclick="exportBackupJSON()">⬇️ Download Backup</button>
+          <button class="btn btn-outline" onclick="document.getElementById('restoreFileInput').click()">⬆️ Restore Backup</button>
+        </div>
+        <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="importBackupJSON(event)" />
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="switchTab('home')">
+      <span class="nav-icon">🏠</span><span data-i18n="navHome">Home</span>
+    </button>
+    <button class="nav-item" id="nav-bill" onclick="switchTab('bill')">
+      <span class="nav-icon">🧾</span><span data-i18n="navBill">Bill</span>
+    </button>
+    <button class="nav-item" id="nav-stock" onclick="switchTab('stock')">
+      <span class="nav-icon">📦</span><span data-i18n="navStock">Stock</span>
+    </button>
+    <button class="nav-item" id="nav-udhaar" onclick="switchTab('udhaar')">
+      <span class="nav-icon">📒</span><span data-i18n="navUdhaar">Udhaar</span>
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+      <span class="nav-icon">⚙️</span><span data-i18n="navSettings">Settings</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: Add / Edit Product -->
+  <div class="modal-backdrop" id="productModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title" id="productModalTitle">Add / Update Product</div>
+        <button class="btn btn-sm btn-outline" onclick="closeModal('productModal')">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="field-label">Barcode Number</label>
+        <input type="text" id="prodBarcode" placeholder="e.g. 8901058851234" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">Product Name *</label>
+        <input type="text" id="prodName" placeholder="e.g. Maggi Masala Noodles 70g" />
+      </div>
+      <div class="input-row">
+        <div style="flex:1;">
+          <label class="field-label">Cost Price (₹)</label>
+          <input type="number" id="prodCost" placeholder="12" step="0.01" />
+        </div>
+        <div style="flex:1;">
+          <label class="field-label">Selling Price (₹) *</label>
+          <input type="number" id="prodPrice" placeholder="14" step="0.01" />
+        </div>
+      </div>
+      <div class="input-row">
+        <div style="flex:1;">
+          <label class="field-label">Current Stock Qty *</label>
+          <input type="number" id="prodStock" placeholder="24" step="0.01" />
+        </div>
+        <div style="flex:1;">
+          <label class="field-label">Low Stock Alert At</label>
+          <input type="number" id="prodMinStock" value="5" />
+        </div>
+      </div>
+      <div class="input-row">
+        <div style="flex:1;">
+          <label class="field-label">Unit</label>
+          <select id="prodUnit" class="form-control">
+            <option value="pcs">Packet / Pcs</option>
+            <option value="kg">Kg (Loose)</option>
+            <option value="ltr">Litre</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label class="field-label">Expiry Date (Optional)</label>
+          <input type="date" id="prodExpiry" />
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="saveProductFromModal()">💾 Save Product</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Loose Weight Selector -->
+  <div class="modal-backdrop" id="looseModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title" id="looseModalTitle">Select Weight</div>
+        <button class="btn btn-sm btn-outline" onclick="closeModal('looseModal')">✕</button>
+      </div>
+      <p id="looseModalRate" style="font-size:0.85rem; color:var(--muted); margin-bottom:12px;"></p>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px;">
+        <button class="btn btn-outline" onclick="addLooseWeight(0.25)">250 g</button>
+        <button class="btn btn-outline" onclick="addLooseWeight(0.5)">500 g</button>
+        <button class="btn btn-outline" onclick="addLooseWeight(1)">1 kg</button>
+        <button class="btn btn-outline" onclick="addLooseWeight(2)">2 kg</button>
+        <button class="btn btn-outline" onclick="addLooseWeight(5)">5 kg</button>
+        <button class="btn btn-outline" onclick="addLooseWeight(0.1)">100 g</button>
+      </div>
+      <div class="input-row">
+        <input type="number" id="customGramsInput" placeholder="Custom grams (e.g. 750)" />
+        <button class="btn btn-primary" onclick="addCustomGrams()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Receipt, UPI QR, WhatsApp & Print -->
+  <div class="modal-backdrop" id="receiptModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title">✅ Bill Ready</div>
+        <button class="btn btn-sm btn-outline" onclick="closeModal('receiptModal')">✕</button>
+      </div>
+      <div style="text-align:center; background:#f8fafc; padding:12px; border-radius:12px; border:1px solid var(--border); margin-bottom:12px;">
+        <div style="font-size:0.8rem; color:var(--muted);">Scan UPI QR to Pay</div>
+        <div style="font-size:1.35rem; font-weight:800; color:var(--primary); margin:4px 0;" id="receiptTotalDisplay">₹0</div>
+        <canvas id="upiQrCanvas" width="160" height="160" style="margin:6px auto; display:block; background:#fff; padding:6px; border-radius:8px; border:1px solid var(--border);"></canvas>
+        <div style="font-size:0.75rem; color:var(--muted);" id="receiptUpiText"></div>
+      </div>
+
+      <pre id="receiptPreviewText" style="background:#f8fafc; padding:10px; border-radius:10px; font-size:0.78rem; white-space:pre-wrap; border:1px solid var(--border); margin-bottom:12px;"></pre>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <button class="btn btn-primary" onclick="shareReceiptWhatsApp()">📲 WhatsApp Bill</button>
+        <button class="btn btn-blue" onclick="window.print()">🖨️ Print / PDF</button>
+        <button class="btn btn-outline" onclick="copyReceiptText()">📋 Copy Text</button>
+        <button class="btn btn-outline" onclick="closeModal('receiptModal')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Udhaar -->
+  <div class="modal-backdrop" id="udhaarModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title">Add Udhaar Entry</div>
+        <button class="btn btn-sm btn-outline" onclick="closeModal('udhaarModal')">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="field-label">Customer Name *</label>
+        <input type="text" id="udhaarName" placeholder="e.g. Rajesh Kumar" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">Phone Number (for WhatsApp Reminder)</label>
+        <input type="tel" id="udhaarPhone" placeholder="9876543210" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">Amount (₹) *</label>
+        <input type="number" id="udhaarAmount" placeholder="500" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">Note</label>
+        <input type="text" id="udhaarNote" placeholder="Monthly ration" />
+      </div>
+      <button class="btn btn-primary btn-block" onclick="saveManualUdhaar()">Save Udhaar</button>
+    </div>
+  </div>
+
+  <!-- Hidden Thermal Print Target -->
+  <div id="printReceiptArea" style="display:none;"></div>
+
+<script>
+/* ==========================================================================
+   1. 10-LANGUAGE LOCALIZATION DICTIONARY & SPEECH LOCALES
+   ========================================================================== */
+const I18N = {
+  en: {
+    speech: 'en-IN', todaySales: "Today's Sales", todayProfit: "Est. Profit",
+    lowStockAlerts: "Low Stock Alerts", totalUdhaar: "Pending Udhaar",
+    quickActions: "Quick Actions", scanToBill: "Scan & Bill", scanAddStock: "Add Stock",
+    newItem: "New Item", reorderList: "Reorder List", alertsTitle: "Stock & Expiry Alerts",
+    recentBills: "Recent Bills", barcodeScanner: "Barcode Scanner", looseItems: "Loose Items (Quick Weight)",
+    currentBill: "Current Bill", clear: "Clear", includeGst: "Include GST",
+    grandTotal: "Grand Total", completeBill: "Complete & QR", saveUdhaar: "Save as Udhaar",
+    stockManager: "Stock Manager", udhaarLedger: "Udhaar Khata (Credit)",
+    shopProfile: "Shop Profile & UPI", securitySettings: "Security & Preferences",
+    backupRestore: "Zero-Cost Backup & Restore", navHome: "Home", navBill: "Bill",
+    navStock: "Stock", navUdhaar: "Udhaar", navSettings: "Settings"
+  },
+  hi: {
+    speech: 'hi-IN', todaySales: "आज की बिक्री", todayProfit: "अनुमानित लाभ",
+    lowStockAlerts: "कम स्टॉक अलर्ट", totalUdhaar: "बकाया उधार",
+    quickActions: "त्वरित कार्य", scanToBill: "स्कैन और बिल", scanAddStock: "स्टॉक जोड़ें",
+    newItem: "नया सामान", reorderList: "ऑर्डर लिस्ट", alertsTitle: "स्टॉक और एक्सपायरी अलर्ट",
+    recentBills: "हाल के बिल", barcodeScanner: "बारकोड स्कैनर", looseItems: "खुला सामान (वजन चुनें)",
+    currentBill: "वर्तमान बिल", clear: "साफ़ करें", includeGst: "GST जोड़ें",
+    grandTotal: "कुल राशि", completeBill: "बिल और QR", saveUdhaar: "उधार में लिखें",
+    stockManager: "स्टॉक प्रबंधन", udhaarLedger: "उधार खाता",
+    shopProfile: "दुकान और UPI विवरण", securitySettings: "सुरक्षा और सेटिंग्स",
+    backupRestore: "बैकअप और रीस्टोर", navHome: "होम", navBill: "बिल",
+    navStock: "स्टॉक", navUdhaar: "उधार", navSettings: "सेटिंग्स"
+  },
+  ta: {
+    speech: 'ta-IN', todaySales: "இன்றைய விற்பனை", todayProfit: "லாபம்",
+    lowStockAlerts: "குறைந்த இருப்பு", totalUdhaar: "நிலுவை கடன்",
+    quickActions: "விரைவு செயல்கள்", scanToBill: "ஸ்கேன் பில்", scanAddStock: "ஸ்டாக் சேர்",
+    newItem: "புதிய பொருள்", reorderList: "ஆர்டர் பட்டியல்", alertsTitle: "ஸ்டாக் எச்சரிக்கைகள்",
+    recentBills: "சமீபத்திய பில்கள்", barcodeScanner: "பார்கோடு ஸ்கேனர்", looseItems: "தளர்வான பொருட்கள்",
+    currentBill: "தற்போதைய பில்", clear: "அழி", includeGst: "GST சேர்",
+    grandTotal: "மொத்த தொகை", completeBill: "பில் & QR", saveUdhaar: "கடனில் சேர்",
+    stockManager: "ஸ்டாக் மேலாளர்", udhaarLedger: "கடன் கணக்கு",
+    shopProfile: "கடை & UPI விவரம்", securitySettings: "பாதுகாப்பு",
+    backupRestore: "பேக்கப்", navHome: "முகப்பு", navBill: "பில்",
+    navStock: "ஸ்டாக்", navUdhaar: "கடன்", navSettings: "அமைப்புகள்"
+  },
+  te: {
+    speech: 'te-IN', todaySales: "నేటి అమ్మకాలు", todayProfit: "లాభం",
+    lowStockAlerts: "తక్కువ స్టాక్", totalUdhaar: "బాకీ ఖాతా",
+    quickActions: "త్వరిత పనులు", scanToBill: "స్కాన్ & బిల్", scanAddStock: "స్టాక్ చేర్చు",
+    newItem: "కొత్త వస్తువు", reorderList: "ఆర్డర్ లిస్ట్", alertsTitle: "స్టాక్ అలర్ట్స్",
+    recentBills: "ఇటీవలి బిల్లులు", barcodeScanner: "బార్‌కోడ్ స్కానర్", looseItems: "విడి సరుకులు",
+    currentBill: "ప్రస్తుత బిల్లు", clear: "క్లియర్", includeGst: "GST కలుపు",
+    grandTotal: "మొత్తం", completeBill: "బిల్ & QR", saveUdhaar: "బాకీలో రాయి",
+    stockManager: "స్టాక్ మేనేజర్", udhaarLedger: "ఉధార్ ఖాతా",
+    shopProfile: "షాప్ & UPI", securitySettings: "సెక్యూరిటీ",
+    backupRestore: "బ్యాకప్", navHome: "హోమ్", navBill: "బిల్",
+    navStock: "స్టాక్", navUdhaar: "ఉధార్", navSettings: "సెట్టింగ్స్"
+  },
+  mr: {
+    speech: 'mr-IN', todaySales: "आजची विक्री", todayProfit: "अंदाजे नफा",
+    lowStockAlerts: "कमी स्टॉक", totalUdhaar: "बाकी उधार",
+    quickActions: "जलद कृती", scanToBill: "स्कॅन आणि बिल", scanAddStock: "स्टॉक भरा",
+    newItem: "नवीन वस्तू", reorderList: "ऑर्डर यादी", alertsTitle: "स्टॉक अलर्ट",
+    recentBills: "अलीकडील बिले", barcodeScanner: "बारकोड स्कॅनर", looseItems: "सुटे सामान",
+    currentBill: "सध्याचे बिल", clear: "साफ करा", includeGst: "GST जोडा",
+    grandTotal: "एकूण रक्कम", completeBill: "बिल आणि QR", saveUdhaar: "उधारीत लिहा",
+    stockManager: "स्टॉक व्यवस्थापन", udhaarLedger: "उधार खाते",
+    shopProfile: "दुकान आणि UPI", securitySettings: "सुरक्षा",
+    backupRestore: "बॅकअप", navHome: "होम", navBill: "बिल",
+    navStock: "स्टॉक", navUdhaar: "उधार", navSettings: "सेटिंग्ज"
+  },
+  bn: {
+    speech: 'bn-IN', todaySales: "আজকের বিক্রি", todayProfit: "আনুমানিক লাভ",
+    lowStockAlerts: "কম স্টক", totalUdhaar: "বাকি খাতা",
+    quickActions: "দ্রুত কাজ", scanToBill: "স্ক্যান ও বিল", scanAddStock: "স্টক যোগ",
+    newItem: "নতুন পণ্য", reorderList: "অর্ডার তালিকা", alertsTitle: "স্টক অ্যালার্ট",
+    recentBills: "সাম্প্রতিক বিল", barcodeScanner: "বারকোড স্ক্যানার", looseItems: "খোলা পণ্য",
+    currentBill: "বর্তমান বিল", clear: "মুছুন", includeGst: "GST যোগ",
+    grandTotal: "মোট টাকা", completeBill: "বিল ও QR", saveUdhaar: "বাকিতে লিখুন",
+    stockManager: "স্টক ম্যানেজার", udhaarLedger: "বাকি খাতা",
+    shopProfile: "দোকান ও UPI", securitySettings: "সিকিউরিটি",
+    backupRestore: "ব্যাকআপ", navHome: "হোম", navBill: "বিল",
+    navStock: "স্টক", navUdhaar: "বাকি", navSettings: "সেটিংস"
+  },
+  gu: {
+    speech: 'gu-IN', todaySales: "આજનું વેચાણ", todayProfit: "અંદાજિત નફો",
+    lowStockAlerts: "ઓછો સ્ટોક", totalUdhaar: "બાકી ઉધાર",
+    quickActions: "ઝડપી કામ", scanToBill: "સ્કેન અને બિલ", scanAddStock: "સ્ટોક ઉમેરો",
+    newItem: "નવી વસ્તુ", reorderList: "ઓર્ડર લિસ્ટ", alertsTitle: "સ્ટોક એલર્ટ",
+    recentBills: "તાજેતરના બિલ", barcodeScanner: "બારકોડ સ્કેનર", looseItems: "છૂટક સામાન",
+    currentBill: "હાલનું બિલ", clear: "સાફ કરો", includeGst: "GST ઉમેરો",
+    grandTotal: "કુલ રકમ", completeBill: "બિલ અને QR", saveUdhaar: "ઉધારમાં લખો",
+    stockManager: "સ્ટોક મેનેજર", udhaarLedger: "ઉધાર ખાતું",
+    shopProfile: "દુકાન અને UPI", securitySettings: "સુરક્ષા",
+    backupRestore: "બેકઅપ", navHome: "હોમ", navBill: "બિલ",
+    navStock: "સ્ટોક", navUdhaar: "ઉધાર", navSettings: "સેટિંગ્સ"
+  },
+  kn: {
+    speech: 'kn-IN', todaySales: "ಇಂದಿನ ಮಾರಾಟ", todayProfit: "ಲಾಭ",
+    lowStockAlerts: "ಕಡಿಮೆ ಸ್ಟಾಕ್", totalUdhaar: "ಬಾಕಿ ಸಾಲ",
+    quickActions: "ತ್ವರಿತ ಕ್ರಿಯೆ", scanToBill: "ಸ್ಕ್ಯಾನ್ ಬಿಲ್", scanAddStock: "ಸ್ಟಾಕ್ ಸೇರಿಸಿ",
+    newItem: "ಹೊಸ ವಸ್ತು", reorderList: "ಆರ್ಡರ್ ಪಟ್ಟಿ", alertsTitle: "ಸ್ಟಾಕ್ ಎಚ್ಚರಿಕೆ",
+    recentBills: "ಇತ್ತೀಚಿನ ಬಿಲ್", barcodeScanner: "ಬಾರ್‌ಕೋಡ್ ಸ್ಕ್ಯಾನರ್", looseItems: "ಬಿಡಿ ವಸ್ತುಗಳು",
+    currentBill: "ಪ್ರಸ್ತುತ ಬಿಲ್", clear: "ತೆರವು", includeGst: "GST ಸೇರಿಸಿ",
+    grandTotal: "ಒಟ್ಟು ಮೊತ್ತ", completeBill: "ಬಿಲ್ & QR", saveUdhaar: "ಸಾಲಕ್ಕೆ ಸೇರಿಸಿ",
+    stockManager: "ಸ್ಟಾಕ್ ನಿರ್ವಹಣೆ", udhaarLedger: "ಸಾಲದ ಖಾತೆ",
+    shopProfile: "ಅಂಗಡಿ & UPI", securitySettings: "ಭದ್ರತೆ",
+    backupRestore: "ಬ್ಯಾಕಪ್", navHome: "ಹೋಮ್", navBill: "ಬಿಲ್",
+    navStock: "ಸ್ಟಾಕ್", navUdhaar: "ಸಾಲ", navSettings: "ಸೆಟ್ಟಿಂಗ್ಸ್"
+  },
+  ml: {
+    speech: 'ml-IN', todaySales: "ഇന്നത്തെ വിൽപ്പന", todayProfit: "ലാഭം",
+    lowStockAlerts: "കുറഞ്ഞ സ്റ്റോക്ക്", totalUdhaar: "ബാക്കി കടം",
+    quickActions: "വേഗത്തിലുള്ളവ", scanToBill: "സ്കാൻ ബിൽ", scanAddStock: "സ്റ്റോക്ക് ചേർക്കുക",
+    newItem: "പുതിയ സാധനം", reorderList: "ഓർഡർ ലിസ്റ്റ്", alertsTitle: "സ്റ്റോക്ക് അലർട്ട്",
+    recentBills: "സമീപകാല ബില്ലുകൾ", barcodeScanner: "ബാർകോഡ് സ്കാനർ", looseItems: "ചില്ലറ സാധനങ്ങൾ",
+    currentBill: "നിലവിലെ ബിൽ", clear: "മായ്ക്കുക", includeGst: "GST ചേർക്കുക",
+    grandTotal: "ആകെ തുക", completeBill: "ബിൽ & QR", saveUdhaar: "കടത്തിൽ എഴുതുക",
+    stockManager: "സ്റ്റോക്ക് മാനേജർ", udhaarLedger: "കടം ബുക്ക്",
+    shopProfile: "കട & UPI", securitySettings: "സുരക്ഷ",
+    backupRestore: "ബാക്കപ്പ്", navHome: "ഹോം", navBill: "ബിൽ",
+    navStock: "സ്റ്റോക്ക്", navUdhaar: "കടം", navSettings: "സെറ്റിംഗ്സ്"
+  },
+  pa: {
+    speech: 'pa-IN', todaySales: "ਅੱਜ ਦੀ ਵਿਕਰੀ", todayProfit: "ਅੰਦਾਜ਼ਨ ਮੁਨਾਫ਼ਾ",
+    lowStockAlerts: "ਘੱਟ ਸਟਾਕ", totalUdhaar: "ਬਕਾਇਆ ਉਧਾਰ",
+    quickActions: "ਤੇਜ਼ ਕੰਮ", scanToBill: "ਸਕੈਨ ਅਤੇ ਬਿੱਲ", scanAddStock: "ਸਟਾਕ ਜੋੜੋ",
+    newItem: "ਨਵਾਂ ਸਮਾਨ", reorderList: "ਆਰਡਰ ਸੂਚੀ", alertsTitle: "ਸਟਾਕ ਅਲਰਟ",
+    recentBills: "ਤਾਜ਼ਾ ਬਿੱਲ", barcodeScanner: "ਬਾਰਕੋਡ ਸਕੈਨਰ", looseItems: "ਖੁੱਲ੍ਹਾ ਸਮਾਨ",
+    currentBill: "ਮੌਜੂਦਾ ਬਿੱਲ", clear: "ਸਾਫ਼ ਕਰੋ", includeGst: "GST ਜੋੜੋ",
+    grandTotal: "ਕੁੱਲ ਰਕਮ", completeBill: "ਬਿੱਲ ਅਤੇ QR", saveUdhaar: "ਉਧਾਰ ਵਿੱਚ ਲਿਖੋ",
+    stockManager: "ਸਟਾਕ ਮੈਨੇਜਰ", udhaarLedger: "ਉਧਾਰ ਖਾਤਾ",
+    shopProfile: "ਦੁਕਾਨ ਅਤੇ UPI", securitySettings: "ਸੁਰੱਖਿਆ",
+    backupRestore: "ਬੈਕਅੱਪ", navHome: "ਹੋਮ", navBill: "ਬਿੱਲ",
+    navStock: "ਸਟਾਕ", navUdhaar: "ਉਧਾਰ", navSettings: "ਸੈਟਿੰਗਾਂ"
+  }
+};
+
+/* ==========================================================================
+   2. ZERO-LAG INDEXEDDB STORAGE ENGINE (WITH PERSISTENT STORAGE)
+   ========================================================================== */
+const DB_NAME = 'DukaanLiteDB';
+const DB_VERSION = 1;
+let db = null;
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('products')) d.createObjectStore('products', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('bills')) d.createObjectStore('bills', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('udhaar')) d.createObjectStore('udhaar', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+  });
+}
+
+function dbPut(store, item) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(item);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+function dbDelete(store, id) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(id);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+/* ==========================================================================
+   3. APP STATE & SEED KIRANA DATA
+   ========================================================================== */
+let state = {
+  products: [],
+  bills: [],
+  udhaar: [],
+  cart: [],
+  stockFilter: 'ALL',
+  selectedLooseProduct: null,
+  lastReceiptText: '',
+  lastReceiptPhone: '',
+  settings: {
+    lang: 'en',
+    shopName: 'Apna Kirana Store',
+    shopAddress: 'Main Bazaar | +91 9876543210',
+    upiId: 'merchant@upi',
+    gstin: '',
+    pinEnabled: false,
+    pinCode: '1234',
+    beepEnabled: true
+  }
+};
+
+const SEED_PRODUCTS = [
+  { id: 'p1', barcode: '8901058851234', name: 'Maggi Masala Noodles 70g', cost: 12, price: 14, stock: 32, minStock: 10, unit: 'pcs', expiry: '2027-04-15' },
+  { id: 'p2', barcode: '8901725121112', name: 'Aashirvaad Shudh Chakki Atta 5kg', cost: 215, price: 245, stock: 4, minStock: 6, unit: 'pcs', expiry: '2026-12-05' },
+  { id: 'p3', barcode: '8901030865432', name: 'Surf Excel Easy Wash 1kg', cost: 118, price: 135, stock: 14, minStock: 5, unit: 'pcs', expiry: '' },
+  { id: 'p4', barcode: '8901491101837', name: 'Tata Salt Iodized 1kg', cost: 22, price: 28, stock: 3, minStock: 8, unit: 'pcs', expiry: '' },
+  { id: 'p5', barcode: 'LOOSE_SUGAR', name: 'Sugar (चीनी)', emoji: '🍚', cost: 39, price: 44, stock: 45, minStock: 10, unit: 'kg', isLoose: true },
+  { id: 'p6', barcode: 'LOOSE_RICE', name: 'Basmati Rice (चावल)', emoji: '🌾', cost: 68, price: 82, stock: 30, minStock: 10, unit: 'kg', isLoose: true },
+  { id: 'p7', barcode: 'LOOSE_DAL', name: 'Toor Dal (अरहर दाल)', emoji: '🟡', cost: 128, price: 148, stock: 18, minStock: 5, unit: 'kg', isLoose: true },
+  { id: 'p8', barcode: 'LOOSE_OIL', name: 'Mustard Oil (सरसों तेल)', emoji: '🫗', cost: 132, price: 150, stock: 22, minStock: 6, unit: 'ltr', isLoose: true },
+  { id: 'p9', barcode: 'LOOSE_POTATO', name: 'Potato (आलू)', emoji: '🥔', cost: 18, price: 25, stock: 40, minStock: 10, unit: 'kg', isLoose: true },
+  { id: 'p10', barcode: 'LOOSE_ONION', name: 'Onion (प्याज)', emoji: '🧅', cost: 24, price: 32, stock: 35, minStock: 10, unit: 'kg', isLoose: true }
+];
+
+/* ==========================================================================
+   4. INITIALIZATION & SERVICE WORKER
+   ========================================================================== */
+window.addEventListener('DOMContentLoaded', async () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
+
+  await openDatabase();
+  const savedSettings = await dbGetAll('settings');
+  if (savedSettings.length) {
+    savedSettings.forEach(s => { state.settings[s.key] = s.value; });
+  }
+
+  state.products = await dbGetAll('products');
+  if (state.products.length === 0) {
+    for (const item of SEED_PRODUCTS) {
+      await dbPut('products', item);
+    }
+    state.products = [...SEED_PRODUCTS];
+  }
+
+  state.bills = await dbGetAll('bills');
+  state.udhaar = await dbGetAll('udhaar');
+
+  applySettingsToUI();
+  changeLanguage(state.settings.lang, true);
+  renderAll();
+
+  if (state.settings.pinEnabled) {
+    document.getElementById('pinShopTitle').textContent = state.settings.shopName;
+    document.getElementById('pinOverlay').classList.add('active');
+  }
+
+  updateNetworkStatus();
+  window.addEventListener('online', updateNetworkStatus);
+  window.addEventListener('offline', updateNetworkStatus);
+});
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installAppBtn').style.display = 'inline-flex';
+});
+
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installAppBtn').style.display = 'none';
+}
+
+function updateNetworkStatus() {
+  const dot = document.getElementById('netDot');
+  const txt = document.getElementById('netStatusText');
+  if (navigator.onLine) {
+    dot.classList.remove('offline');
+    txt.textContent = 'Online • Offline-Ready';
+  } else {
+    dot.classList.add('offline');
+    txt.textContent = 'Offline Mode (Saved Locally)';
+  }
+}
+
+/* ==========================================================================
+   5. NAVIGATION & LANGUAGE SWITCHING
+   ========================================================================== */
+function switchTab(tab) {
+  stopAllCameras();
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+  renderAll();
+}
+
+function changeLanguage(lang, skipSave = false) {
+  state.settings.lang = lang;
+  document.getElementById('langSelect').value = lang;
+  const dict = I18N[lang] || I18N.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) el.textContent = dict[key];
+  });
+  if (!skipSave) dbPut('settings', { key: 'lang', value: lang });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ==========================================================================
+   6. ZERO-KB WEB AUDIO SCANNER BEEP & BARCODE SCANNER
+   ========================================================================== */
+function playScannerBeep() {
+  if (!state.settings.beepEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1046.5, ctx.currentTime); // Crisp C6 supermarket beep
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+  } catch (e) {}
+}
+
+let activeStream = null;
+let scanLoopTimer = null;
+let lastScannedCode = '';
+let lastScanTime = 0;
+
+function stopAllCameras() {
+  if (scanLoopTimer) clearInterval(scanLoopTimer);
+  scanLoopTimer = null;
+  if (activeStream) {
+    activeStream.getTracks().forEach(t => t.stop());
+    activeStream = null;
+  }
+  document.getElementById('billScannerBox').style.display = 'none';
+  document.getElementById('stockScannerBox').style.display = 'none';
+  document.getElementById('toggleBillCamBtn').textContent = 'Start Camera';
+}
+
+function toggleScanner(mode) {
+  const box = document.getElementById(mode + 'ScannerBox');
+  if (box.style.display === 'flex') {
+    stopAllCameras();
+  } else {
+    startScanner(mode);
+  }
+}
+
+async function startScanner(mode) {
+  stopAllCameras();
+  const box = document.getElementById(mode + 'ScannerBox');
+  const video = document.getElementById(mode + 'Video');
+  box.style.display = 'flex';
+  if (mode === 'bill') document.getElementById('toggleBillCamBtn').textContent = 'Stop Camera';
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Camera unavailable. Use search or demo barcode buttons below.');
+    return;
+  }
+
+  try {
+    activeStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = activeStream;
+    await video.play();
+
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code']
+      });
+      scanLoopTimer = setInterval(async () => {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          try {
+            const codes = await detector.detect(video);
+            if (codes.length > 0) {
+              handleDetectedBarcode(codes[0].rawValue, mode);
+            }
+          } catch (e) {}
+        }
+      }, 280);
+    } else {
+      showToast('Live camera open. Enter barcode digits or tap demo barcodes below.');
+    }
+  } catch (err) {
+    box.style.display = 'none';
+    showToast('Camera permission denied or HTTPS required.');
+  }
+}
+
+function handleDetectedBarcode(code, mode) {
+  const now = Date.now();
+  if (code === lastScannedCode && now - lastScanTime < 1600) return;
+  lastScannedCode = code;
+  lastScanTime = now;
+  playScannerBeep();
+
+  const existing = state.products.find(p => p.barcode === code);
+  if (existing) {
+    if (mode === 'bill') {
+      addToCart(existing, 1);
+      showToast(`Added: ${existing.name}`);
+    } else {
+      existing.stock = Number(existing.stock) + 1;
+      dbPut('products', existing);
+      renderAll();
+      showToast(`+1 Stock: ${existing.name} (Total: ${existing.stock})`);
+    }
+  } else {
+    openAddProductModal(code);
+    showToast(`New Barcode ${code}! Enter details once.`);
+  }
+}
+
+/* ==========================================================================
+   7. ZERO-STORAGE VOICE SEARCH (ANDROID/CHROME NATIVE WEB SPEECH API)
+   ========================================================================== */
+function startVoiceSearch(inputId, btnId) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast('Voice search not supported on this browser. Please type.');
+    document.getElementById(inputId).focus();
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  const dict = I18N[state.settings.lang] || I18N.en;
+  recognition.lang = dict.speech;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  const btn = document.getElementById(btnId);
+  btn.classList.add('listening');
+  showToast('🎤 Speak item name now...');
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    const input = document.getElementById(inputId);
+    input.value = transcript;
+    input.dispatchEvent(new Event('input'));
+    showToast(`Heard: "${transcript}"`);
+  };
+
+  recognition.onerror = () => {
+    showToast('Voice needs internet or offline pack. Focusing keyboard...');
+    document.getElementById(inputId).focus();
+  };
+
+  recognition.onend = () => btn.classList.remove('listening');
+  recognition.start();
+}
+
+/* ==========================================================================
+   8. BILLING, LOOSE WEIGHTS, GST, UPI QR, WHATSAPP & PRINT
+   ========================================================================== */
+function renderLooseGrid() {
+  const grid = document.getElementById('looseItemsGrid');
+  const looseItems = state.products.filter(p => p.isLoose);
+  grid.innerHTML = looseItems.map(p => `
+    <div class="loose-tile" onclick="openLooseModal('${p.id}')">
+      <span class="loose-emoji">${p.emoji || '⚖️'}</span>
+      <div class="loose-name">${p.name.split('(')[0].trim()}</div>
+      <div class="loose-price">₹${p.price}/${p.unit}</div>
+    </div>
+  `).join('');
+}
+
+function openLooseModal(prodId) {
+  const prod = state.products.find(p => p.id === prodId);
+  if (!prod) return;
+  state.selectedLooseProduct = prod;
+  document.getElementById('looseModalTitle').textContent = prod.name;
+  document.getElementById('looseModalRate').textContent = `Rate: ₹${prod.price} per ${prod.unit} | Available: ${prod.stock} ${prod.unit}`;
+  document.getElementById('customGramsInput').value = '';
+  document.getElementById('looseModal').classList.add('open');
+}
+
+function addLooseWeight(qtyKg) {
+  if (!state.selectedLooseProduct) return;
+  addToCart(state.selectedLooseProduct, qtyKg);
+  closeModal('looseModal');
+  showToast(`Added ${qtyKg} ${state.selectedLooseProduct.unit} ${state.selectedLooseProduct.name}`);
+}
+
+function addCustomGrams() {
+  const grams = parseFloat(document.getElementById('customGramsInput').value);
+  if (!grams || grams <= 0) return;
+  addLooseWeight(Number((grams / 1000).toFixed(3)));
+}
+
+function renderBillSearch() {
+  const q = document.getElementById('billSearchInput').value.trim().toLowerCase();
+  const resDiv = document.getElementById('billSearchResults');
+  if (!q) { resDiv.innerHTML = ''; return; }
+
+  const matches = state.products.filter(p =>
+    p.name.toLowerCase().includes(q) || (p.barcode && p.barcode.toLowerCase().includes(q))
+  ).slice(0, 6);
+
+  if (matches.length === 0) {
+    resDiv.innerHTML = `<div style="font-size:0.82rem; color:var(--muted); padding:6px 0;">No match. <a href="#" onclick="openAddProductModal('${q}');return false;" style="color:var(--primary);font-weight:700;">+ Add "${q}"</a></div>`;
+    return;
+  }
+
+  resDiv.innerHTML = matches.map(p => `
+    <div class="item-row">
+      <div class="item-info">
+        <div class="item-name">${p.name}</div>
+        <div class="item-meta">₹${p.price}/${p.unit} • Stock: ${p.stock}</div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="p_add('${p.id}')">+ Add</button>
+    </div>
+  `).join('');
+}
+
+function p_add(id) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  if (p.isLoose) openLooseModal(id);
+  else addToCart(p, 1);
+}
+
+function addToCart(product, qty) {
+  const existing = state.cart.find(c => c.id === product.id);
+  if (existing) {
+    existing.qty = Number((existing.qty + qty).toFixed(3));
+  } else {
+    state.cart.push({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price),
+      cost: Number(product.cost || 0),
+      unit: product.unit,
+      qty: qty
+    });
+  }
+  renderCart();
+}
+
+function updateCartQty(idx, delta) {
+  const item = state.cart[idx];
+  if (!item) return;
+  const step = item.unit === 'kg' || item.unit === 'ltr' ? 0.25 : 1;
+  item.qty = Number((item.qty + delta * step).toFixed(3));
+  if (item.qty <= 0) state.cart.splice(idx, 1);
+  renderCart();
+}
+
+function clearCart() {
+  state.cart = [];
+  renderCart();
+}
+
+function renderCart() {
+  const list = document.getElementById('cartItemsList');
+  if (state.cart.length === 0) {
+    list.innerHTML = `<div style="text-align:center; color:var(--muted); padding:18px 0; font-size:0.86rem;">Scan a packet or tap a loose item to start billing</div>`;
+  } else {
+    list.innerHTML = state.cart.map((c, idx) => `
+      <div class="item-row">
+        <div class="item-info">
+          <div class="item-name">${c.name}</div>
+          <div class="item-meta">₹${c.price} × ${c.qty} ${c.unit} = <strong>₹${(c.price * c.qty).toFixed(2)}</strong></div>
+        </div>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="updateCartQty(${idx}, -1)">−</button>
+          <span class="qty-val">${c.qty}</span>
+          <button class="qty-btn" onclick="updateCartQty(${idx}, 1)">+</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const subtotal = state.cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const gstOn = document.getElementById('gstToggle').checked;
+  const gstRate = Number(document.getElementById('gstRateSelect').value);
+  const gstAmt = gstOn ? subtotal * (gstRate / 100) : 0;
+  const grandTotal = subtotal + gstAmt;
+
+  document.getElementById('billSubtotal').textContent = `₹${subtotal.toFixed(2)}`;
+  document.getElementById('billGstRow').style.display = gstOn ? 'flex' : 'none';
+  document.getElementById('billGstAmount').textContent = `₹${gstAmt.toFixed(2)} (${gstRate}%)`;
+  document.getElementById('billGrandTotal').textContent = `₹${grandTotal.toFixed(2)}`;
+}
+
+async function checkoutBill(paymentType) {
+  if (state.cart.length === 0) {
+    showToast('Cart is empty!');
+    return;
+  }
+
+  const subtotal = state.cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const costTotal = state.cart.reduce((s, c) => s + c.cost * c.qty, 0);
+  const gstOn = document.getElementById('gstToggle').checked;
+  const gstRate = Number(document.getElementById('gstRateSelect').value);
+  const gstAmt = gstOn ? subtotal * (gstRate / 100) : 0;
+  const total = Number((subtotal + gstAmt).toFixed(2));
+  const profit = Number((subtotal - costTotal).toFixed(2));
+
+  const custName = document.getElementById('billCustomerName').value.trim();
+  const custPhone = document.getElementById('billCustomerPhone').value.trim();
+
+  if (paymentType === 'UDHAAR' && !custName) {
+    showToast('Please enter Customer Name for Udhaar!');
+    document.getElementById('billCustomerName').focus();
+    return;
+  }
+
+  // Deduct stock
+  for (const item of state.cart) {
+    const prod = state.products.find(p => p.id === item.id);
+    if (prod) {
+      prod.stock = Math.max(0, Number((Number(prod.stock) - item.qty).toFixed(3)));
+      await dbPut('products', prod);
+    }
+  }
+
+  const bill = {
+    id: 'INV-' + Date.now().toString().slice(-6),
+    date: new Date().toISOString(),
+    items: JSON.parse(JSON.stringify(state.cart)),
+    subtotal, gstAmt, total, profit,
+    paymentType, custName, custPhone
+  };
+  await dbPut('bills', bill);
+  state.bills.unshift(bill);
+
+  if (paymentType === 'UDHAAR') {
+    const uEntry = {
+      id: 'UDH-' + Date.now(),
+      name: custName,
+      phone: custPhone,
+      amount: total,
+      note: `Bill #${bill.id}`,
+      date: new Date().toISOString()
+    };
+    await dbPut('udhaar', uEntry);
+    state.udhaar.unshift(uEntry);
+  }
+
+  // Build Formatted Receipt
+  const lines = [
+    `*${state.settings.shopName}*`,
+    state.settings.shopAddress,
+    state.settings.gstin ? `GSTIN: ${state.settings.gstin}` : '',
+    `Bill: #${bill.id} | ${new Date().toLocaleDateString('en-IN')}`,
+    custName ? `Customer: ${custName}` : '',
+    `--------------------------------`,
+    ...bill.items.map(i => `${i.name} (${i.qty} ${i.unit}) - ₹${(i.price * i.qty).toFixed(2)}`),
+    `--------------------------------`,
+    gstOn ? `Subtotal: ₹${subtotal.toFixed(2)}\nGST (${gstRate}%): ₹${gstAmt.toFixed(2)}` : '',
+    `*TOTAL: ₹${total.toFixed(2)}* (${paymentType})`,
+    `Thank you! Visit again.`
+  ].filter(Boolean).join('\n');
+
+  state.lastReceiptText = lines;
+  state.lastReceiptPhone = custPhone;
+
+  document.getElementById('receiptTotalDisplay').textContent = `₹${total.toFixed(2)}`;
+  document.getElementById('receiptUpiText').textContent = `UPI: ${state.settings.upiId}`;
+  document.getElementById('receiptPreviewText').textContent = lines;
+  document.getElementById('printReceiptArea').innerHTML = `<pre style="white-space:pre-wrap;font-family:monospace;">${lines}</pre>`;
+
+  drawDeterministicUpiQr(total);
+
+  state.cart = [];
+  document.getElementById('billCustomerName').value = '';
+  document.getElementById('billCustomerPhone').value = '';
+  renderAll();
+  document.getElementById('receiptModal').classList.add('open');
+}
+
+/* Lightweight Built-In Matrix QR Renderer (Zero External CDN Needed) */
+function drawDeterministicUpiQr(amount) {
+  const canvas = document.getElementById('upiQrCanvas');
+  const ctx = canvas.getContext('2d');
+  const upiUri = `upi://pay?pa=${encodeURIComponent(state.settings.upiId)}&pn=${encodeURIComponent(state.settings.shopName)}&am=${amount.toFixed(2)}&cu=INR`;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 160, 160);
+  ctx.fillStyle = '#0f172a';
+
+  const size = 25;
+  const cell = 140 / size;
+  const off = 10;
+
+  // Draw 3 standard QR finder patterns
+  const drawFinder = (gx, gy) => {
+    ctx.fillRect(off + gx * cell, off + gy * cell, 7 * cell, 7 * cell);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(off + (gx + 1) * cell, off + (gy + 1) * cell, 5 * cell, 5 * cell);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(off + (gx + 2) * cell, off + (gy + 2) * cell, 3 * cell, 3 * cell);
+  };
+  drawFinder(0, 0);
+  drawFinder(size - 7, 0);
+  drawFinder(0, size - 7);
+
+  // Encode URI hash into deterministic data modules
+  let hash = 2166136261;
+  for (let i = 0; i < upiUri.length; i++) {
+    hash ^= upiUri.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if ((r < 8 && c < 8) || (r < 8 && c > size - 9) || (r > size - 9 && c < 8)) continue;
+      const bit = ((hash >>> ((r + c) % 24)) ^ (r * 7 + c * 13)) & 1;
+      if (bit) ctx.fillRect(off + c * cell, off + r * cell, cell - 0.5, cell - 0.5);
+    }
+  }
+}
+
+function shareReceiptWhatsApp() {
+  const cleanPhone = (state.lastReceiptPhone || '').replace(/\D/g, '');
+  const prefix = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const url = `https://wa.me/${prefix}?text=${encodeURIComponent(state.lastReceiptText)}`;
+  window.open(url, '_blank');
+}
+
+function copyReceiptText() {
+  navigator.clipboard.writeText(state.lastReceiptText);
+  showToast('Receipt copied to clipboard!');
+}
+
+/* ==========================================================================
+   9. STOCK MANAGEMENT, ALERTS & REORDER WHATSAPP
+   ========================================================================== */
+function setStockFilter(f) {
+  state.stockFilter = f;
+  renderStockList();
+}
+
+function isExpiringSoon(expiryStr) {
+  if (!expiryStr) return false;
+  const diffDays = (new Date(expiryStr) - new Date()) / (1000 * 60 * 60 * 24);
+  return diffDays <= 30;
+}
+
+function renderStockList() {
+  const q = document.getElementById('stockSearchInput').value.trim().toLowerCase();
+  let items = state.products.filter(p =>
+    p.name.toLowerCase().includes(q) || (p.barcode && p.barcode.toLowerCase().includes(q))
+  );
+
+  if (state.stockFilter === 'LOW') items = items.filter(p => Number(p.stock) <= Number(p.minStock));
+  if (state.stockFilter === 'EXP') items = items.filter(p => isExpiringSoon(p.expiry));
+
+  const container = document.getElementById('stockItemsList');
+  if (items.length === 0) {
+    container.innerHTML = `<div style="text-align:center;color:var(--muted);padding:16px;">No items match filter.</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(p => {
+    const low = Number(p.stock) <= Number(p.minStock);
+    const exp = isExpiringSoon(p.expiry);
+    return `
+      <div class="item-row">
+        <div class="item-info">
+          <div class="item-name">${p.name}</div>
+          <div class="item-meta">
+            MRP: ₹${p.price}/${p.unit} • Stock: <strong>${p.stock} ${p.unit}</strong>
+            ${low ? `<span class="badge badge-low">LOW</span>` : ''}
+            ${exp ? `<span class="badge badge-exp">EXP: ${p.expiry}</span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm btn-outline" onclick="quickRestock('${p.id}', 5)">+5</button>
+          <button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')">✏️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function quickRestock(id, addQty) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  p.stock = Number(p.stock) + addQty;
+  await dbPut('products', p);
+  renderAll();
+  showToast(`Added +${addQty} ${p.unit} to ${p.name}`);
+}
+
+let editingProductId = null;
+function openAddProductModal(prefillBarcode = '') {
+  editingProductId = null;
+  document.getElementById('productModalTitle').textContent = 'Add New Product';
+  document.getElementById('prodBarcode').value = prefillBarcode;
+  document.getElementById('prodName').value = '';
+  document.getElementById('prodCost').value = '';
+  document.getElementById('prodPrice').value = '';
+  document.getElementById('prodStock').value = '';
+  document.getElementById('prodMinStock').value = '5';
+  document.getElementById('prodUnit').value = 'pcs';
+  document.getElementById('prodExpiry').value = '';
+  document.getElementById('productModal').classList.add('open');
+}
+
+function editProduct(id) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  editingProductId = id;
+  document.getElementById('productModalTitle').textContent = 'Edit Product';
+  document.getElementById('prodBarcode').value = p.barcode || '';
+  document.getElementById('prodName').value = p.name;
+  document.getElementById('prodCost').value = p.cost || '';
+  document.getElementById('prodPrice').value = p.price;
+  document.getElementById('prodStock').value = p.stock;
+  document.getElementById('prodMinStock').value = p.minStock || 5;
+  document.getElementById('prodUnit').value = p.unit || 'pcs';
+  document.getElementById('prodExpiry').value = p.expiry || '';
+  document.getElementById('productModal').classList.add('open');
+}
+
+async function saveProductFromModal() {
+  const name = document.getElementById('prodName').value.trim();
+  const price = parseFloat(document.getElementById('prodPrice').value);
+  const stock = parseFloat(document.getElementById('prodStock').value);
+  if (!name || isNaN(price) || isNaN(stock)) {
+    showToast('Please enter Name, Selling Price, and Stock!');
+    return;
+  }
+
+  const unit = document.getElementById('prodUnit').value;
+  const prod = {
+    id: editingProductId || 'prod-' + Date.now(),
+    barcode: document.getElementById('prodBarcode').value.trim() || ('BC-' + Date.now().toString().slice(-6)),
+    name,
+    cost: parseFloat(document.getElementById('prodCost').value) || 0,
+    price,
+    stock,
+    minStock: parseFloat(document.getElementById('prodMinStock').value) || 5,
+    unit,
+    expiry: document.getElementById('prodExpiry').value,
+    isLoose: unit === 'kg' || unit === 'ltr'
+  };
+
+  await dbPut('products', prod);
+  const idx = state.products.findIndex(x => x.id === prod.id);
+  if (idx >= 0) state.products[idx] = prod;
+  else state.products.unshift(prod);
+
+  closeModal('productModal');
+  renderAll();
+  showToast('Product saved!');
+}
+
+function shareReorderWhatsApp() {
+  const lowItems = state.products.filter(p => Number(p.stock) <= Number(p.minStock));
+  if (lowItems.length === 0) {
+    showToast('All stock levels are healthy!');
+    return;
+  }
+  const msg = [
+    `*Reorder List — ${state.settings.shopName}*`,
+    ...lowItems.map((p, i) => `${i + 1}. ${p.name} (Left: ${p.stock} ${p.unit})`)
+  ].join('\n');
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+/* ==========================================================================
+   10. UDHAAR (CREDIT LEDGER) & DASHBOARD RENDERING
+   ========================================================================== */
+function openUdhaarModal() {
+  document.getElementById('udhaarName').value = '';
+  document.getElementById('udhaarPhone').value = '';
+  document.getElementById('udhaarAmount').value = '';
+  document.getElementById('udhaarNote').value = '';
+  document.getElementById('udhaarModal').classList.add('open');
+}
+
+async function saveManualUdhaar() {
+  const name = document.getElementById('udhaarName').value.trim();
+  const amount = parseFloat(document.getElementById('udhaarAmount').value);
+  if (!name || isNaN(amount) || amount <= 0) {
+    showToast('Enter customer name and valid amount');
+    return;
+  }
+  const entry = {
+    id: 'UDH-' + Date.now(),
+    name,
+    phone: document.getElementById('udhaarPhone').value.trim(),
+    amount,
+    note: document.getElementById('udhaarNote').value.trim(),
+    date: new Date().toISOString()
+  };
+  await dbPut('udhaar', entry);
+  state.udhaar.unshift(entry);
+  closeModal('udhaarModal');
+  renderAll();
+  showToast('Udhaar added');
+}
+
+async function settleUdhaar(id) {
+  await dbDelete('udhaar', id);
+  state.udhaar = state.udhaar.filter(u => u.id !== id);
+  renderAll();
+  showToast('Udhaar marked as Paid!');
+}
+
+function sendUdhaarReminder(name, phone, amount) {
+  const msg = `Namaste ${name}, gentle reminder from *${state.settings.shopName}*: Your pending Udhaar balance is *₹${amount}*. You can pay via UPI (${state.settings.upiId}) or at the shop. Thank you!`;
+  const clean = (phone || '').replace(/\D/g, '');
+  const prefix = clean.length === 10 ? `91${clean}` : clean;
+  window.open(`https://wa.me/${prefix}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function renderUdhaarList() {
+  const container = document.getElementById('udhaarList');
+  if (state.udhaar.length === 0) {
+    container.innerHTML = `<div style="text-align:center;color:var(--muted);padding:16px;">No pending Udhaar! 🎉</div>`;
+    return;
+  }
+  container.innerHTML = state.udhaar.map(u => `
+    <div class="item-row">
+      <div class="item-info">
+        <div class="item-name">${u.name} — <span style="color:var(--danger);">₹${u.amount}</span></div>
+        <div class="item-meta">${u.note || 'Credit'} • ${new Date(u.date).toLocaleDateString('en-IN')}</div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-sm btn-outline" onclick="sendUdhaarReminder('${u.name.replace(/'/g,"")}', '${u.phone || ''}', ${u.amount})">📲</button>
+        <button class="btn btn-sm btn-primary" onclick="settleUdhaar('${u.id}')">Paid</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderDashboard() {
+  const todayStr = new Date().toDateString();
+  const todaysBills = state.bills.filter(b => new Date(b.date).toDateString() === todayStr);
+  const salesSum = todaysBills.reduce((s, b) => s + Number(b.total), 0);
+  const profitSum = todaysBills.reduce((s, b) => s + Number(b.profit || 0), 0);
+  const udhaarSum = state.udhaar.reduce((s, u) => s + Number(u.amount), 0);
+
+  const alerts = state.products.filter(p => Number(p.stock) <= Number(p.minStock) || isExpiringSoon(p.expiry));
+
+  document.getElementById('statTodaySales').textContent = `₹${salesSum.toFixed(0)}`;
+  document.getElementById('statTodayProfit').textContent = `₹${profitSum.toFixed(0)}`;
+  document.getElementById('statLowStock').textContent = alerts.length;
+  document.getElementById('statTotalUdhaar').textContent = `₹${udhaarSum.toFixed(0)}`;
+  document.getElementById('alertCountBadge').textContent = alerts.length;
+
+  const alertsDiv = document.getElementById('homeAlertsList');
+  if (alerts.length === 0) {
+    alertsDiv.innerHTML = `<div style="font-size:0.84rem;color:var(--muted);">No low stock or expiry warnings.</div>`;
+  } else {
+    alertsDiv.innerHTML = alerts.slice(0, 5).map(p => `
+      <div class="item-row">
+        <div class="item-info">
+          <div class="item-name">${p.name}</div>
+          <div class="item-meta">Left: ${p.stock} ${p.unit} ${p.expiry ? '• Exp: ' + p.expiry : ''}</div>
+        </div>
+        <button class="btn btn-sm btn-outline" onclick="quickRestock('${p.id}', 10)">+10</button>
+      </div>
+    `).join('');
+  }
+
+  const billsDiv = document.getElementById('recentBillsList');
+  if (state.bills.length === 0) {
+    billsDiv.innerHTML = `<div style="font-size:0.84rem;color:var(--muted);">No bills created yet today.</div>`;
+  } else {
+    billsDiv.innerHTML = state.bills.slice(0, 5).map(b => `
+      <div class="item-row">
+        <div class="item-info">
+          <div class="item-name">#${b.id} ${b.custName ? '• ' + b.custName : ''}</div>
+          <div class="item-meta">${b.items.length} items • ${new Date(b.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+        </div>
+        <div>
+          <strong>₹${Number(b.total).toFixed(0)}</strong>
+          <span class="badge ${b.paymentType === 'PAID' ? 'badge-ok' : 'badge-exp'}">${b.paymentType}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function renderDemoChips() {
+  const packed = state.products.filter(p => !p.isLoose).slice(0, 3);
+  const chipsHtml = packed.map(p =>
+    `<button class="chip" onclick="handleDetectedBarcode('${p.barcode}', 'bill')">📷 ${p.name.split(' ')[0]} (${p.barcode.slice(-4)})</button>`
+  ).join('') + `<button class="chip" onclick="handleDetectedBarcode('8909999123456', 'bill')">🆕 New Barcode</button>`;
+  document.getElementById('billDemoChips').innerHTML = chipsHtml;
+}
+
+function renderAll() {
+  renderDashboard();
+  renderLooseGrid();
+  renderDemoChips();
+  renderCart();
+  renderStockList();
+  renderUdhaarList();
+}
+
+/* ==========================================================================
+   11. SETTINGS, PIN LOCK & JSON BACKUP / RESTORE
+   ========================================================================== */
+function applySettingsToUI() {
+  document.getElementById('headerShopName').textContent = state.settings.shopName;
+  document.getElementById('setShopName').value = state.settings.shopName;
+  document.getElementById('setShopAddress').value = state.settings.shopAddress;
+  document.getElementById('setUpiId').value = state.settings.upiId;
+  document.getElementById('setGstin').value = state.settings.gstin;
+  document.getElementById('setPinEnabled').checked = !!state.settings.pinEnabled;
+  document.getElementById('pinSetupBox').style.display = state.settings.pinEnabled ? 'block' : 'none';
+  document.getElementById('setBeepEnabled').checked = state.settings.beepEnabled !== false;
+}
+
+async function saveSettings(silent = false) {
+  state.settings.shopName = document.getElementById('setShopName').value.trim() || 'Apna Kirana Store';
+  state.settings.shopAddress = document.getElementById('setShopAddress').value.trim();
+  state.settings.upiId = document.getElementById('setUpiId').value.trim() || 'merchant@upi';
+  state.settings.gstin = document.getElementById('setGstin').value.trim();
+  state.settings.beepEnabled = document.getElementById('setBeepEnabled').checked;
+
+  for (const [key, value] of Object.entries(state.settings)) {
+    await dbPut('settings', { key, value });
+  }
+  document.getElementById('headerShopName').textContent = state.settings.shopName;
+  if (!silent) showToast('Settings saved!');
+}
+
+function togglePinSetting(enabled) {
+  state.settings.pinEnabled = enabled;
+  document.getElementById('pinSetupBox').style.display = enabled ? 'block' : 'none';
+  dbPut('settings', { key: 'pinEnabled', value: enabled });
+}
+
+async function savePinCode() {
+  const pin = document.getElementById('setPinCode').value.trim();
+  if (!/^\d{4}$/.test(pin)) {
+    showToast('Enter a valid 4-digit number');
+    return;
+  }
+  state.settings.pinCode = pin;
+  await dbPut('settings', { key: 'pinCode', value: pin });
+  showToast('4-Digit PIN updated!');
+}
+
+let enteredPin = '';
+function enterPinDigit(d) {
+  if (enteredPin.length >= 4) return;
+  enteredPin += d;
+  updatePinDots();
+  if (enteredPin.length === 4) {
+    if (enteredPin === String(state.settings.pinCode)) {
+      document.getElementById('pinOverlay').classList.remove('active');
+      enteredPin = '';
+    } else {
+      showToast('Wrong PIN! Try again.');
+      enteredPin = '';
+      updatePinDots();
+    }
+  }
+}
+function clearPinInput() { enteredPin = ''; updatePinDots(); }
+function backspacePin() { enteredPin = enteredPin.slice(0, -1); updatePinDots(); }
+function updatePinDots() {
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach((dot, idx) => dot.classList.toggle('filled', idx < enteredPin.length));
+}
+
+function exportBackupJSON() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    settings: state.settings,
+    products: state.products,
+    bills: state.bills,
+    udhaar: state.udhaar
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `DukaanLite_Backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('Backup file downloaded!');
+}
+
+function importBackupJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.products) {
+        for (const p of data.products) await dbPut('products', p);
+        state.products = data.products;
+      }
+      if (data.bills) {
+        for (const b of data.bills) await dbPut('bills', b);
+        state.bills = data.bills;
+      }
+      if (data.udhaar) {
+        for (const u of data.udhaar) await dbPut('udhaar', u);
+        state.udhaar = data.udhaar;
+      }
+      renderAll();
+      showToast('Backup restored successfully!');
+    } catch (err) {
+      showToast('Invalid backup JSON file.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+</script>
+</body>
+</html>

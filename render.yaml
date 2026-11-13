@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: dukaanlite-pos
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
